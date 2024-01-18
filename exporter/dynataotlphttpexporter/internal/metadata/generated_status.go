@@ -3,23 +3,22 @@
 package metadata
 
 import (
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
-
-	"go.opentelemetry.io/collector/component"
 )
 
 const (
-	Type             = "otlphttp"
+	Type             = "dynataotlphttp"
 	LogsStability    = component.StabilityLevelBeta
 	TracesStability  = component.StabilityLevelStable
 	MetricsStability = component.StabilityLevelStable
 )
 
 func Meter(settings component.TelemetrySettings) metric.Meter {
-	return settings.MeterProvider.Meter("otelcol/otlphttp")
+	return settings.MeterProvider.Meter("otelcol/dynataotlphttp")
 }
 
 func Tracer(settings component.TelemetrySettings) trace.Tracer {
-	return settings.TracerProvider.Tracer("otelcol/otlphttp")
+	return settings.TracerProvider.Tracer("otelcol/dynataotlphttp")
 }
