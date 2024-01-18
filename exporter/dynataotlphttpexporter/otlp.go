@@ -160,9 +160,9 @@ func (e *baseExporter) export(ctx context.Context, url string, request []byte, p
 	req.Header.Set("Content-Type", protobufContentType)
 	req.Header.Set("User-Agent", e.userAgent)
 
-	serviceName := ctx.Value("dataset")
-	if serviceName != nil {
-		if v, ok := serviceName.(string); ok {
+	datasetName := ctx.Value("dataset")
+	if datasetName != nil {
+		if v, ok := datasetName.(string); ok {
 			req.Header.Set("x-honeycomb-dataset", v)
 		}
 	}
