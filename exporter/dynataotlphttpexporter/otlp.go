@@ -131,7 +131,7 @@ func (e *baseExporter) pushMetrics(ctx context.Context, md pmetric.Metrics) erro
 			return consumererror.NewPermanent(err)
 		}
 
-		ctx = context.WithValue(ctx, "service.name", k)
+		ctx = context.WithValue(ctx, "dataset", k+".metrics")
 
 		expErr = e.export(ctx, e.metricsURL, request, metricsPartialSuccessHandler)
 		if expErr != nil {
@@ -160,10 +160,10 @@ func (e *baseExporter) export(ctx context.Context, url string, request []byte, p
 	req.Header.Set("Content-Type", protobufContentType)
 	req.Header.Set("User-Agent", e.userAgent)
 
-	serviceName := ctx.Value("service.name")
+	serviceName := ctx.Value("dataset")
 	if serviceName != nil {
 		if v, ok := serviceName.(string); ok {
-			req.Header.Set("x-honeycomb-dataset", v+".metrics")
+			req.Header.Set("x-honeycomb-dataset", v)
 		}
 	}
 
