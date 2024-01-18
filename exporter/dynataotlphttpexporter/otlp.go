@@ -163,7 +163,7 @@ func (e *baseExporter) export(ctx context.Context, url string, request []byte, p
 	serviceName := ctx.Value("service.name")
 	if serviceName != nil {
 		if v, ok := serviceName.(string); ok {
-			req.Header.Set("x-honeycomb-dataset", v)
+			req.Header.Set("x-honeycomb-dataset", v+".metrics")
 		}
 	}
 
