@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dynata/dynotlphttpexporter/internal/metadata"
+	"github.com/dynata/opentelemetry-collector/exporter/dynataotlphttpexporter/internal/metadata"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/confighttp"
