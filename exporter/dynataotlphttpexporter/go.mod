@@ -1,4 +1,4 @@
-module github.com/dynata/opentelemetry-collector-contrib/exporter/dynataotlphttpexporter
+module github.com/dynata/opentelemetry-collector/exporter/dynataotlphttpexporter
 
 go 1.20
 
