@@ -24,7 +24,7 @@ import (
 	"go.opentelemetry.io/collector/internal/testutil"
 	semconv "go.opentelemetry.io/collector/semconv/v1.18.0"
 	"go.opentelemetry.io/collector/service/internal/proctelemetry"
-	"go.opentelemetry.io/collector/service/internal/servicetelemetry"
+	"go.opentelemetry.io/collector/service/internal/resource"
 	"go.opentelemetry.io/collector/service/telemetry"
 )
 
@@ -42,7 +42,7 @@ func TestBuildResource(t *testing.T) {
 
 	// Check default config
 	cfg := telemetry.Config{}
-	otelRes := buildResource(buildInfo, cfg)
+	otelRes := resource.New(buildInfo, cfg.Resource)
 	res := pdataFromSdk(otelRes)
 
 	assert.Equal(t, res.Attributes().Len(), 3)
@@ -64,7 +64,7 @@ func TestBuildResource(t *testing.T) {
 			semconv.AttributeServiceInstanceID: nil,
 		},
 	}
-	otelRes = buildResource(buildInfo, cfg)
+	otelRes = resource.New(buildInfo, cfg.Resource)
 	res = pdataFromSdk(otelRes)
 
 	// Attributes should not exist since we nil-ified all.
@@ -79,7 +79,7 @@ func TestBuildResource(t *testing.T) {
 			semconv.AttributeServiceInstanceID: strPtr("c"),
 		},
 	}
-	otelRes = buildResource(buildInfo, cfg)
+	otelRes = resource.New(buildInfo, cfg.Resource)
 	res = pdataFromSdk(otelRes)
 
 	assert.Equal(t, res.Attributes().Len(), 3)
@@ -275,8 +275,6 @@ func TestTelemetryInit(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tel := newColTelemetry(tc.disableHighCard, tc.extendedConfig)
-			buildInfo := component.NewDefaultBuildInfo()
 			if tc.extendedConfig {
 				tc.cfg.Metrics.Readers = []config.MetricReader{
 					{
@@ -299,24 +297,26 @@ func TestTelemetryInit(t *testing.T) {
 					},
 				}
 			}
-			otelRes := buildResource(buildInfo, *tc.cfg)
-			res := pdataFromSdk(otelRes)
-			settings := servicetelemetry.TelemetrySettings{
-				Logger:   zap.NewNop(),
-				Resource: res,
+			set := meterProviderSettings{
+				res:               resource.New(component.NewDefaultBuildInfo(), tc.cfg.Resource),
+				logger:            zap.NewNop(),
+				cfg:               tc.cfg.Metrics,
+				asyncErrorChannel: make(chan error),
 			}
-			err := tel.init(otelRes, settings, *tc.cfg, make(chan error))
+			mp, err := newMeterProvider(set, tc.disableHighCard, tc.extendedConfig)
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, tel.shutdown())
+				if prov, ok := mp.(interface{ Shutdown(context.Context) error }); ok {
+					require.NoError(t, prov.Shutdown(context.Background()))
+				}
 			}()
 
-			v := createTestMetrics(t, tel.mp)
+			v := createTestMetrics(t, mp)
 			defer func() {
 				view.Unregister(v)
 			}()
 
-			metrics := getMetricsFromPrometheus(t, tel.servers[0].Handler)
+			metrics := getMetricsFromPrometheus(t, mp.(*meterProvider).servers[0].Handler)
 			require.Equal(t, len(tc.expectedMetrics), len(metrics))
 
 			for metricName, metricValue := range tc.expectedMetrics {

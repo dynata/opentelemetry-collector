@@ -11,14 +11,15 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/internal/localhostgate"
 	"go.opentelemetry.io/collector/internal/sharedcomponent"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver/internal/metadata"
 )
 
 const (
-	defaultGRPCEndpoint = "0.0.0.0:4317"
-	defaultHTTPEndpoint = "0.0.0.0:4318"
+	grpcPort = 4317
+	httpPort = 4318
 
 	defaultTracesURLPath  = "/v1/traces"
 	defaultMetricsURLPath = "/v1/metrics"
@@ -40,17 +41,17 @@ func NewFactory() receiver.Factory {
 func createDefaultConfig() component.Config {
 	return &Config{
 		Protocols: Protocols{
-			GRPC: &configgrpc.GRPCServerSettings{
-				NetAddr: confignet.NetAddr{
-					Endpoint:  defaultGRPCEndpoint,
+			GRPC: &configgrpc.ServerConfig{
+				NetAddr: confignet.AddrConfig{
+					Endpoint:  localhostgate.EndpointForPort(grpcPort),
 					Transport: "tcp",
 				},
 				// We almost write 0 bytes, so no need to tune WriteBufferSize.
 				ReadBufferSize: 512 * 1024,
 			},
 			HTTP: &HTTPConfig{
-				HTTPServerSettings: &confighttp.HTTPServerSettings{
-					Endpoint: defaultHTTPEndpoint,
+				ServerConfig: &confighttp.ServerConfig{
+					Endpoint: localhostgate.EndpointForPort(httpPort),
 				},
 				TracesURLPath:  defaultTracesURLPath,
 				MetricsURLPath: defaultMetricsURLPath,
@@ -79,9 +80,7 @@ func createTraces(
 		return nil, err
 	}
 
-	if err = r.Unwrap().registerTraceConsumer(nextConsumer); err != nil {
-		return nil, err
-	}
+	r.Unwrap().registerTraceConsumer(nextConsumer)
 	return r, nil
 }
 
@@ -104,9 +103,7 @@ func createMetrics(
 		return nil, err
 	}
 
-	if err = r.Unwrap().registerMetricsConsumer(consumer); err != nil {
-		return nil, err
-	}
+	r.Unwrap().registerMetricsConsumer(consumer)
 	return r, nil
 }
 
@@ -129,9 +126,7 @@ func createLog(
 		return nil, err
 	}
 
-	if err = r.Unwrap().registerLogsConsumer(consumer); err != nil {
-		return nil, err
-	}
+	r.Unwrap().registerLogsConsumer(consumer)
 	return r, nil
 }
 

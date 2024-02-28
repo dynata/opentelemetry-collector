@@ -48,7 +48,7 @@ import (
 
 const otlpReceiverName = "receiver_test"
 
-var otlpReceiverID = component.NewIDWithName("otlp", otlpReceiverName)
+var otlpReceiverID = component.MustNewIDWithName("otlp", otlpReceiverName)
 
 func TestJsonHttp(t *testing.T) {
 	tests := []struct {
@@ -101,10 +101,6 @@ func TestJsonHttp(t *testing.T) {
 	require.NoError(t, recv.Start(context.Background(), componenttest.NewNopHost()), "Failed to start trace receiver")
 	t.Cleanup(func() { require.NoError(t, recv.Shutdown(context.Background())) })
 
-	// TODO(nilebox): make starting server deterministic
-	// Wait for the servers to start
-	<-time.After(10 * time.Millisecond)
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sink.Reset()
@@ -139,10 +135,6 @@ func TestHandleInvalidRequests(t *testing.T) {
 	recv := newHTTPReceiver(t, componenttest.NewNopTelemetrySettings(), addr, sink)
 	require.NoError(t, recv.Start(context.Background(), componenttest.NewNopHost()), "Failed to start trace receiver")
 	t.Cleanup(func() { require.NoError(t, recv.Shutdown(context.Background())) })
-
-	// TODO(nilebox): make starting server deterministic
-	// Wait for the servers to start
-	<-time.After(10 * time.Millisecond)
 
 	tests := []struct {
 		name        string
@@ -346,10 +338,6 @@ func TestProtoHttp(t *testing.T) {
 	require.NoError(t, recv.Start(context.Background(), componenttest.NewNopHost()), "Failed to start trace receiver")
 	t.Cleanup(func() { require.NoError(t, recv.Shutdown(context.Background())) })
 
-	// TODO(nilebox): make starting server deterministic
-	// Wait for the servers to start
-	<-time.After(10 * time.Millisecond)
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sink.Reset()
@@ -433,9 +421,6 @@ func TestOTLPReceiverInvalidContentEncoding(t *testing.T) {
 
 	url := fmt.Sprintf("http://%s%s", addr, defaultTracesURLPath)
 
-	// Wait for the servers to start
-	<-time.After(10 * time.Millisecond)
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			body, err := test.reqBodyFunc()
@@ -516,7 +501,7 @@ func TestOTLPReceiverGRPCTracesIngestTest(t *testing.T) {
 		},
 		{
 			okToIngest:   false,
-			expectedCode: codes.InvalidArgument,
+			expectedCode: codes.Internal,
 			permanent:    true,
 		},
 		{
@@ -648,8 +633,8 @@ func TestOTLPReceiverHTTPTracesIngestTest(t *testing.T) {
 func TestGRPCInvalidTLSCredentials(t *testing.T) {
 	cfg := &Config{
 		Protocols: Protocols{
-			GRPC: &configgrpc.GRPCServerSettings{
-				NetAddr: confignet.NetAddr{
+			GRPC: &configgrpc.ServerConfig{
+				NetAddr: confignet.AddrConfig{
 					Endpoint:  testutil.GetAvailableLocalAddress(t),
 					Transport: "tcp",
 				},
@@ -714,7 +699,7 @@ func TestHTTPInvalidTLSCredentials(t *testing.T) {
 	cfg := &Config{
 		Protocols: Protocols{
 			HTTP: &HTTPConfig{
-				HTTPServerSettings: &confighttp.HTTPServerSettings{
+				ServerConfig: &confighttp.ServerConfig{
 					Endpoint: testutil.GetAvailableLocalAddress(t),
 					TLSSetting: &configtls.TLSServerSetting{
 						TLSSetting: configtls.TLSSetting{
@@ -747,7 +732,7 @@ func testHTTPMaxRequestBodySize(t *testing.T, path string, contentType string, p
 	cfg := &Config{
 		Protocols: Protocols{
 			HTTP: &HTTPConfig{
-				HTTPServerSettings: &confighttp.HTTPServerSettings{
+				ServerConfig: &confighttp.ServerConfig{
 					Endpoint:           addr,
 					MaxRequestBodySize: int64(size),
 				},
@@ -803,9 +788,9 @@ func newReceiver(t *testing.T, settings component.TelemetrySettings, cfg *Config
 	set.ID = id
 	r, err := newOtlpReceiver(cfg, &set)
 	require.NoError(t, err)
-	require.NoError(t, r.registerTraceConsumer(c))
-	require.NoError(t, r.registerMetricsConsumer(c))
-	require.NoError(t, r.registerLogsConsumer(c))
+	r.registerTraceConsumer(c)
+	r.registerMetricsConsumer(c)
+	r.registerLogsConsumer(c)
 	return r
 }
 

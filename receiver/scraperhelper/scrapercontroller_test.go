@@ -17,7 +17,6 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
@@ -51,7 +50,7 @@ type testScrapeMetrics struct {
 	err               error
 }
 
-func (ts *testScrapeMetrics) scrape(_ context.Context) (pmetric.Metrics, error) {
+func (ts *testScrapeMetrics) scrape(context.Context) (pmetric.Metrics, error) {
 	ts.timesScrapeCalled++
 	ts.ch <- ts.timesScrapeCalled
 
@@ -64,8 +63,8 @@ func (ts *testScrapeMetrics) scrape(_ context.Context) (pmetric.Metrics, error) 
 	return md, nil
 }
 
-func newTestNoDelaySettings() *ScraperControllerSettings {
-	return &ScraperControllerSettings{
+func newTestNoDelaySettings() *ControllerConfig {
+	return &ControllerConfig{
 		CollectionInterval: time.Second,
 		InitialDelay:       0,
 	}
@@ -75,8 +74,7 @@ type metricsTestCase struct {
 	name string
 
 	scrapers                  int
-	scraperControllerSettings *ScraperControllerSettings
-	nilNextConsumer           bool
+	scraperControllerSettings *ControllerConfig
 	scrapeErr                 error
 	expectedNewErr            string
 	expectScraped             bool
@@ -98,15 +96,9 @@ func TestScrapeController(t *testing.T) {
 			expectScraped: true,
 		},
 		{
-			name:            "AddMetricsScrapers_NilNextConsumerError",
-			scrapers:        2,
-			nilNextConsumer: true,
-			expectedNewErr:  "nil next Consumer",
-		},
-		{
 			name:                      "AddMetricsScrapersWithCollectionInterval_InvalidCollectionIntervalError",
 			scrapers:                  2,
-			scraperControllerSettings: &ScraperControllerSettings{CollectionInterval: -time.Millisecond},
+			scraperControllerSettings: &ControllerConfig{CollectionInterval: -time.Millisecond},
 			expectedNewErr:            "collection_interval must be a positive duration",
 		},
 		{
@@ -134,7 +126,7 @@ func TestScrapeController(t *testing.T) {
 	for _, test := range testCases {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			receiverID := component.NewID("receiver")
+			receiverID := component.MustNewID("receiver")
 			tt, err := componenttest.SetupTelemetry(receiverID)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, tt.Shutdown(context.Background())) })
@@ -147,17 +139,13 @@ func TestScrapeController(t *testing.T) {
 			tickerCh := make(chan time.Time)
 			options = append(options, WithTickerChannel(tickerCh))
 
-			var nextConsumer consumer.Metrics
 			sink := new(consumertest.MetricsSink)
-			if !test.nilNextConsumer {
-				nextConsumer = sink
-			}
 			cfg := newTestNoDelaySettings()
 			if test.scraperControllerSettings != nil {
 				cfg = test.scraperControllerSettings
 			}
 
-			mr, err := NewScraperControllerReceiver(cfg, receiver.CreateSettings{ID: receiverID, TelemetrySettings: tt.TelemetrySettings(), BuildInfo: component.NewDefaultBuildInfo()}, nextConsumer, options...)
+			mr, err := NewScraperControllerReceiver(cfg, receiver.CreateSettings{ID: receiverID, TelemetrySettings: tt.TelemetrySettings(), BuildInfo: component.NewDefaultBuildInfo()}, sink, options...)
 			if test.expectedNewErr != "" {
 				assert.EqualError(t, err, test.expectedNewErr)
 				return
@@ -326,7 +314,7 @@ func assertScraperViews(t *testing.T, tt componenttest.TestTelemetry, expectedEr
 		}
 	}
 
-	require.NoError(t, tt.CheckScraperMetrics(component.NewID("receiver"), component.NewID("scraper"), expectedScraped, expectedErrored))
+	require.NoError(t, tt.CheckScraperMetrics(component.MustNewID("receiver"), component.MustNewID("scraper"), expectedScraped, expectedErrored))
 }
 
 func TestSingleScrapePerInterval(t *testing.T) {
@@ -337,7 +325,7 @@ func TestSingleScrapePerInterval(t *testing.T) {
 
 	tickerCh := make(chan time.Time)
 
-	scp, err := NewScraper("", tsm.scrape)
+	scp, err := NewScraper("scaper", tsm.scrape)
 	assert.NoError(t, err)
 
 	receiver, err := NewScraperControllerReceiver(
@@ -379,11 +367,11 @@ func TestScrapeControllerStartsOnInit(t *testing.T) {
 		ch: make(chan int, 1),
 	}
 
-	scp, err := NewScraper("", tsm.scrape)
+	scp, err := NewScraper("scraper", tsm.scrape)
 	require.NoError(t, err, "Must not error when creating scraper")
 
 	r, err := NewScraperControllerReceiver(
-		&ScraperControllerSettings{
+		&ControllerConfig{
 			CollectionInterval: time.Hour,
 			InitialDelay:       0,
 		},
@@ -409,13 +397,13 @@ func TestScrapeControllerInitialDelay(t *testing.T) {
 
 	var (
 		elapsed = make(chan time.Time, 1)
-		cfg     = ScraperControllerSettings{
+		cfg     = ControllerConfig{
 			CollectionInterval: time.Second,
 			InitialDelay:       300 * time.Millisecond,
 		}
 	)
 
-	scp, err := NewScraper("timed", func(ctx context.Context) (pmetric.Metrics, error) {
+	scp, err := NewScraper("timed", func(context.Context) (pmetric.Metrics, error) {
 		elapsed <- time.Now()
 		return pmetric.NewMetrics(), nil
 	})
