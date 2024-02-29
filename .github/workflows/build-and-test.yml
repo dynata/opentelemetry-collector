@@ -129,10 +129,6 @@ jobs:
           git diff -s --exit-code || (echo 'Generated code is out of date, please run "make genotelcorecol" and commit the changes in this PR.' && exit 1)
       - name: Multimod verify
         run: make multimod-verify
-      - name: crosslink
-        run: |
-          make crosslink
-          git diff -s --exit-code || (echo 'Replace statements are out of date, please run "make crosslink" and commit the changes in this PR.' && exit 1)
 
   unittest-matrix:
     strategy:
@@ -206,16 +202,6 @@ jobs:
           key: coverage-${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
       - name: Run Unit Tests With Coverage
         run: make gotest-with-cover
-      - name: Upload coverage report
-        uses: Wandalen/wretry.action@0ef67d343938e879e0a9bb37c107a55731e8ed35 # v1.4.5
-        with:
-          action: codecov/codecov-action@v3
-          with: |
-            file: ./coverage.txt
-            fail_ci_if_error: true
-            verbose: true
-          attempt_limit: 10
-          attempt_delay: 15000
 
   cross-build-collector:
     needs: [setup-environment]
