@@ -52,6 +52,12 @@ const (
 	protobufContentType = "application/x-protobuf"
 )
 
+type key int
+
+const (
+	keyDataset key = iota
+)
+
 // Create new exporter.
 func newExporter(cfg component.Config, set exporter.CreateSettings) (*baseExporter, error) {
 	oCfg := cfg.(*Config)
@@ -152,7 +158,7 @@ func (e *baseExporter) pushMetrics(ctx context.Context, md pmetric.Metrics) erro
 			return consumererror.NewPermanent(err)
 		}
 
-		ctx = context.WithValue(ctx, "dataset", k+".metrics")
+		ctx = context.WithValue(ctx, keyDataset, k+".metrics")
 
 		expErr = e.export(ctx, e.metricsURL, request, e.metricsPartialSuccessHandler)
 		if expErr != nil {
@@ -201,7 +207,7 @@ func (e *baseExporter) export(ctx context.Context, url string, request []byte, p
 
 	req.Header.Set("User-Agent", e.userAgent)
 
-	datasetName := ctx.Value("dataset")
+	datasetName := ctx.Value(keyDataset)
 	if datasetName != nil {
 		if v, ok := datasetName.(string); ok {
 			req.Header.Set("x-honeycomb-dataset", v)
