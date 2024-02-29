@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package dynataotlphttpexporter // import "go.opentelemetry.io/collector/exporter/otlphttpexporter"
+package dynataotlphttpexporter // import "github.com/dynata/opentelemetry-collector/exporter/dynataotlphttpexporter"
 
 import (
 	"bytes"

@@ -4,4 +4,4 @@
 //go:generate mdatagen metadata.yaml
 
 // Package otlphttpexporter exports data by using the OTLP format to an HTTP endpoint.
-package dynataotlphttpexporter // import "go.opentelemetry.io/collector/exporter/otlphttpexporter"
+package dynataotlphttpexporter // import "github.com/dynata/opentelemetry-collector/exporter/dynataotlphttpexporter"
