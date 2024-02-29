@@ -9,17 +9,21 @@ import (
 	"go.opentelemetry.io/collector/component"
 )
 
+var (
+	Type      = component.MustNewType("dynataotlphttp")
+	scopeName = "go.opentelemetry.io/collector/exporter/dynataotlphttpexporter"
+)
+
 const (
-	Type             = "dynataotlphttp"
 	LogsStability    = component.StabilityLevelBeta
 	TracesStability  = component.StabilityLevelStable
 	MetricsStability = component.StabilityLevelStable
 )
 
 func Meter(settings component.TelemetrySettings) metric.Meter {
-	return settings.MeterProvider.Meter("otelcol/dynataotlphttp")
+	return settings.MeterProvider.Meter(scopeName)
 }
 
 func Tracer(settings component.TelemetrySettings) trace.Tracer {
-	return settings.TracerProvider.Tracer("otelcol/dynataotlphttp")
+	return settings.TracerProvider.Tracer(scopeName)
 }
