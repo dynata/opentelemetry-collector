@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package dynataotlphttpexporter // import "github.com/dynata/opentelemetry-collector/exporter/dynataotlphttpexporter"
+package dynataotlphttpexporter // import "go.opentelemetry.io/collector/exporter/dynataotlphttpexporter"
 
 import (
 	"bytes"
@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.opentelemetry.io/collector/internal/httphelper"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/plog/plogotlp"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -83,8 +84,8 @@ func newExporter(cfg component.Config, set exporter.CreateSettings) (*baseExport
 
 // start actually creates the HTTP client. The client construction is deferred till this point as this
 // is the only place we get hold of Extensions which are required to construct auth round tripper.
-func (e *baseExporter) start(_ context.Context, host component.Host) error {
-	client, err := e.config.ClientConfig.ToClient(host, e.settings)
+func (e *baseExporter) start(ctx context.Context, host component.Host) error {
+	client, err := e.config.ClientConfig.ToClient(ctx, host, e.settings)
 	if err != nil {
 		return err
 	}
@@ -139,11 +140,36 @@ func (e *baseExporter) pushMetrics(ctx context.Context, md pmetric.Metrics) erro
 
 	var expErr error
 
-	for k, v := range newRm {
-		metrics := pmetric.NewMetrics()
-		v.CopyTo(metrics.ResourceMetrics())
+	if len(newRm) > 0 {
+		for k, v := range newRm {
+			metrics := pmetric.NewMetrics()
+			v.CopyTo(metrics.ResourceMetrics())
 
-		tr := pmetricotlp.NewExportRequestFromMetrics(metrics)
+			tr := pmetricotlp.NewExportRequestFromMetrics(metrics)
+			var err error
+			var request []byte
+			switch e.config.Encoding {
+			case EncodingJSON:
+				request, err = tr.MarshalJSON()
+			case EncodingProto:
+				request, err = tr.MarshalProto()
+			default:
+				err = fmt.Errorf("invalid encoding: %s", e.config.Encoding)
+			}
+			if err != nil {
+				return consumererror.NewPermanent(err)
+			}
+
+			ctx = context.WithValue(ctx, keyDataset, k+".metrics")
+
+			expErr = e.export(ctx, e.metricsURL, request, e.metricsPartialSuccessHandler)
+			if expErr != nil {
+				break
+			}
+		}
+	} else {
+		tr := pmetricotlp.NewExportRequestFromMetrics(md)
+
 		var err error
 		var request []byte
 		switch e.config.Encoding {
@@ -157,13 +183,7 @@ func (e *baseExporter) pushMetrics(ctx context.Context, md pmetric.Metrics) erro
 		if err != nil {
 			return consumererror.NewPermanent(err)
 		}
-
-		ctx = context.WithValue(ctx, keyDataset, k+".metrics")
-
 		expErr = e.export(ctx, e.metricsURL, request, e.metricsPartialSuccessHandler)
-		if expErr != nil {
-			break
-		}
 	}
 	return expErr
 }
@@ -232,16 +252,18 @@ func (e *baseExporter) export(ctx context.Context, url string, request []byte, p
 	respStatus := readResponseStatus(resp)
 
 	// Format the error message. Use the status if it is present in the response.
+	var errString string
 	var formattedErr error
 	if respStatus != nil {
-		formattedErr = fmt.Errorf(
+		errString = fmt.Sprintf(
 			"error exporting items, request to %s responded with HTTP Status Code %d, Message=%s, Details=%v",
 			url, resp.StatusCode, respStatus.Message, respStatus.Details)
 	} else {
-		formattedErr = fmt.Errorf(
+		errString = fmt.Sprintf(
 			"error exporting items, request to %s responded with HTTP Status Code %d",
 			url, resp.StatusCode)
 	}
+	formattedErr = httphelper.NewStatusFromMsgAndHTTPCode(errString, resp.StatusCode).Err()
 
 	if isRetryableStatusCode(resp.StatusCode) {
 		// A retry duration of 0 seconds will trigger the default backoff policy

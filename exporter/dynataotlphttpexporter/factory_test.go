@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exportertest"
+	"go.opentelemetry.io/collector/internal/testutil"
 )
 
 func TestCreateDefaultConfig(t *testing.T) {
@@ -41,7 +42,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 func TestCreateMetricsExporter(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.ClientConfig.Endpoint = "http://" + GetAvailableLocalAddress(t)
+	cfg.ClientConfig.Endpoint = "http://" + testutil.GetAvailableLocalAddress(t)
 
 	set := exportertest.NewNopCreateSettings()
 	oexp, err := factory.CreateMetricsExporter(context.Background(), set, cfg)
@@ -50,7 +51,7 @@ func TestCreateMetricsExporter(t *testing.T) {
 }
 
 func TestCreateTracesExporter(t *testing.T) {
-	endpoint := "http://" + GetAvailableLocalAddress(t)
+	endpoint := "http://" + testutil.GetAvailableLocalAddress(t)
 
 	tests := []struct {
 		name             string
@@ -72,7 +73,7 @@ func TestCreateTracesExporter(t *testing.T) {
 			config: &Config{
 				ClientConfig: confighttp.ClientConfig{
 					Endpoint: endpoint,
-					TLSSetting: configtls.TLSClientSetting{
+					TLSSetting: configtls.ClientConfig{
 						Insecure: false,
 					},
 				},
@@ -95,8 +96,8 @@ func TestCreateTracesExporter(t *testing.T) {
 			config: &Config{
 				ClientConfig: confighttp.ClientConfig{
 					Endpoint: endpoint,
-					TLSSetting: configtls.TLSClientSetting{
-						TLSSetting: configtls.TLSSetting{
+					TLSSetting: configtls.ClientConfig{
+						Config: configtls.Config{
 							CAFile: filepath.Join("testdata", "test_cert.pem"),
 						},
 					},
@@ -108,8 +109,8 @@ func TestCreateTracesExporter(t *testing.T) {
 			config: &Config{
 				ClientConfig: confighttp.ClientConfig{
 					Endpoint: endpoint,
-					TLSSetting: configtls.TLSClientSetting{
-						TLSSetting: configtls.TLSSetting{
+					TLSSetting: configtls.ClientConfig{
+						Config: configtls.Config{
 							CAFile: "nosuchfile",
 						},
 					},
@@ -200,7 +201,7 @@ func TestCreateTracesExporter(t *testing.T) {
 func TestCreateLogsExporter(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.ClientConfig.Endpoint = "http://" + GetAvailableLocalAddress(t)
+	cfg.ClientConfig.Endpoint = "http://" + testutil.GetAvailableLocalAddress(t)
 
 	set := exportertest.NewNopCreateSettings()
 	oexp, err := factory.CreateLogsExporter(context.Background(), set, cfg)

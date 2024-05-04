@@ -40,7 +40,7 @@ module-sets:
       - go.opentelemetry.io/collector/exporter/nopexporter
       - go.opentelemetry.io/collector/exporter/otlpexporter
       - go.opentelemetry.io/collector/exporter/otlphttpexporter
-      - github.com/dynata/opentelemetry-collector/exporter/dynataotlphttpexporter
+      - go.opentelemetry.io/collector/exporter/dynataotlphttpexporter
       - go.opentelemetry.io/collector/extension
       - go.opentelemetry.io/collector/extension/auth
       - go.opentelemetry.io/collector/extension/ballastextension

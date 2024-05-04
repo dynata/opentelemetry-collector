@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package dynataotlphttpexporter // import "github.com/dynata/opentelemetry-collector/exporter/dynataotlphttpexporter"
+package dynataotlphttpexporter // import "go.opentelemetry.io/collector/exporter/dynataotlphttpexporter"
 
 import (
 	"context"
@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dynata/opentelemetry-collector/exporter/dynataotlphttpexporter/internal/metadata"
-
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -19,6 +17,7 @@ import (
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/exporter/dynataotlphttpexporter/internal/metadata"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 

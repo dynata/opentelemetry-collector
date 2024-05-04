@@ -59,8 +59,8 @@ func TestUnmarshalConfig(t *testing.T) {
 					"another":                "somevalue",
 				},
 				Endpoint: "https://1.2.3.4:1234",
-				TLSSetting: configtls.TLSClientSetting{
-					TLSSetting: configtls.TLSSetting{
+				TLSSetting: configtls.ClientConfig{
+					Config: configtls.Config{
 						CAFile:   "/var/lib/mycert.pem",
 						CertFile: "certfile",
 						KeyFile:  "keyfile",
